@@ -4,7 +4,10 @@ import { useEffect, useState } from "react";
 import { BookOpenText, MessagesSquare, ZapIcon, Trash2 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { ActionButton } from "@/components/action-button";
-import { Panel, PanelItem } from "@/components/panel";
+import { Panel, type PanelItem } from "@/components/panel";
+import { PanelContainer } from "@/components/panel-container";
+import { Chat, ChatThread } from "@/components/chat";
+import { generateMockThread } from "@/services/api";
 import {
   fetchInbox,
   fetchTasks,
@@ -13,9 +16,10 @@ import {
   updateTask,
   deleteTask,
   createTask,
+  fetchThreadFromPost,
 } from "@/services/api";
 
-type ViewState = "closed" | "menu" | "inbox" | "task";
+type ViewState = "closed" | "menu" | "inbox" | "task" | "chat";
 
 export default function Home() {
   const [view, setView] = useState<ViewState>("closed");
@@ -23,10 +27,15 @@ export default function Home() {
   const [taskItems, setTaskItems] = useState<PanelItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [activeChat, setActiveChat] = useState<ChatThread | null>(null);
+  const [activeChatHasNewMessages, setActiveChatHasNewMessages] =
+    useState(false);
+  const [chatLoading, setChatLoading] = useState(false);
 
   const isMenu = view === "menu";
   const isInbox = view === "inbox";
   const isTask = view === "task";
+  const isChat = view === "chat";
 
   // Load data when view changes
   useEffect(() => {
@@ -86,13 +95,50 @@ export default function Home() {
     }
   }
 
-  async function handleDeleteMessage(id: string) {
+  async function handleInboxItemClick(id: string) {
+    const item = inboxItems.find((i) => i.id === id);
+    if (!item) return;
+
+    const wasUnread: boolean = item.unread ?? false;
+    const postId = Number(id);
+
+    setChatLoading(true);
+    setView("chat");
+
+    try {
+      // Fetch dynamic thread from API
+      const thread = await fetchThreadFromPost(postId);
+      setActiveChat(thread);
+      setActiveChatHasNewMessages(wasUnread);
+    } catch (err) {
+      // Fallback to mock data if API fails
+      const thread = generateMockThread(item.title);
+      setActiveChat(thread);
+      setActiveChatHasNewMessages(wasUnread);
+    } finally {
+      setChatLoading(false);
+    }
+
+    // Mark as read if it was unread
+    if (wasUnread) {
+      setInboxItems((prev) =>
+        prev.map((i) => (i.id === id ? { ...i, unread: false } : i)),
+      );
+    }
+  }
+
+  async function handleDeleteInboxItem(id: string) {
     try {
       await deleteMessage(Number(id));
       setInboxItems((prev) => prev.filter((item) => item.id !== id));
     } catch (err) {
       alert("Failed to delete message");
     }
+  }
+
+  function handleBackFromChat() {
+    setActiveChat(null);
+    setView("inbox");
   }
 
   // =================== CRUD: TASKS ===================
@@ -153,7 +199,7 @@ export default function Home() {
     <div className="flex flex-col flex-1 items-end justify-end p-6">
       <div className="flex flex-row items-end gap-4 relative">
         <AnimatePresence mode="wait">
-          {(isMenu || isInbox) && (
+          {(isMenu || isInbox || isChat) && (
             <ActionButton
               key={isMenu ? "task-menu" : "task-inactive"}
               variant="task"
@@ -173,23 +219,25 @@ export default function Home() {
               layoutId="inbox-btn"
               label={isMenu ? "Inbox" : undefined}
               icon={MessagesSquare}
-              onClick={() => setView("inbox")}
+              onClick={() => (isChat ? setView("chat") : setView("inbox"))}
               delay={isMenu ? 0.05 : 0}
             />
           )}
         </AnimatePresence>
 
         <div className="relative flex flex-col items-center">
-          {/* Panels - positioned absolute above buttons */}
-          <AnimatePresence>
+          {/* Single Panel Container with dynamic children */}
+          <PanelContainer
+            isOpen={isInbox || isTask || isChat}
+            onClose={() => setView("menu")}
+          >
             {isInbox && (
               <Panel
-                isOpen={isInbox}
                 title="Inbox"
                 icon={MessagesSquare}
                 items={inboxItems}
                 onClose={() => setView("menu")}
-                onItemClick={handleDeleteMessage}
+                onItemClick={handleInboxItemClick}
                 searchPlaceholder="Search inbox..."
                 loading={loading}
                 error={error}
@@ -198,12 +246,27 @@ export default function Home() {
                 addButtonLabel="New Message"
               />
             )}
-          </AnimatePresence>
-
-          <AnimatePresence>
+            {isChat && (
+              <>
+                {chatLoading ? (
+                  <div className="flex-1 flex items-center justify-center">
+                    <div className="flex items-center gap-2 text-gray-500">
+                      <div className="w-5 h-5 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin" />
+                      <span className="text-sm">Loading conversation...</span>
+                    </div>
+                  </div>
+                ) : activeChat ? (
+                  <Chat
+                    thread={activeChat}
+                    hasNewMessages={activeChatHasNewMessages}
+                    onBack={handleBackFromChat}
+                    onClose={() => setView("closed")}
+                  />
+                ) : null}
+              </>
+            )}
             {isTask && (
               <Panel
-                isOpen={isTask}
                 title="Tasks"
                 icon={BookOpenText}
                 items={taskItems}
@@ -221,7 +284,7 @@ export default function Home() {
                 addButtonLabel="New Task"
               />
             )}
-          </AnimatePresence>
+          </PanelContainer>
 
           <AnimatePresence mode="wait">
             {(view === "closed" || isMenu) && (
@@ -256,7 +319,7 @@ export default function Home() {
           </AnimatePresence>
 
           <AnimatePresence>
-            {isInbox && (
+            {(isInbox || isChat) && (
               <div className="relative z-20">
                 <ActionButton
                   key="inbox-active"
@@ -264,7 +327,9 @@ export default function Home() {
                   layoutId="inbox-btn"
                   label=" "
                   icon={MessagesSquare}
-                  onClick={() => setView("menu")}
+                  onClick={() =>
+                    isChat ? handleBackFromChat() : setView("menu")
+                  }
                 />
               </div>
             )}
