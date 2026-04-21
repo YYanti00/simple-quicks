@@ -75,7 +75,7 @@ export function Panel({
             {onRefresh && (
               <button
                 onClick={onRefresh}
-                className="text-blue-500 hover:text-blue-600 text-sm underline"
+                className="text-blue-500 hover:text-blue-600 text-sm underline cursor-pointer"
               >
                 Try again
               </button>
@@ -98,7 +98,7 @@ export function Panel({
                 ) : (
                   <button
                     onClick={() => onItemClick?.(item.id)}
-                    className="w-full p-4 hover:bg-gray-50 transition-colors text-left"
+                    className="w-full p-4 hover:bg-gray-50 transition-colors text-left  cursor-pointer"
                   >
                     <div className="flex items-start gap-3">
                       {/* Avatar - Overlapping circles */}

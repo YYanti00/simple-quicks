@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, ReactElement } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, X, MoreHorizontal, Send } from "lucide-react";
 
-interface ChatMessage {
+export interface ChatMessage {
   id: string;
   sender: string;
   senderName: string;
@@ -20,7 +20,7 @@ interface ChatMessage {
   };
 }
 
-interface ChatThread {
+export interface ChatThread {
   id: string;
   title: string;
   participants: number;
@@ -556,7 +556,7 @@ export function Chat({ thread, hasNewMessages, onBack, onClose }: ChatProps) {
                   onClick={() =>
                     deleteConfirmId && handleDeleteConfirm(deleteConfirmId)
                   }
-                  className="px-4 py-2 text-sm bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors"
+                  className="px-4 py-2 text-sm bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors  cursor-pointer"
                 >
                   Delete
                 </button>

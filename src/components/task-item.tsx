@@ -54,7 +54,6 @@ interface TaskItemProps {
 function getDaysLeft(dueDate: string): number {
   const due = new Date(dueDate);
   const today = new Date();
-  // Reset time to start of day for accurate day difference
   due.setHours(0, 0, 0, 0);
   today.setHours(0, 0, 0, 0);
   
@@ -85,9 +84,11 @@ export function TaskItem({
 }: TaskItemProps) {
   const [isTagPopupOpen, setIsTagPopupOpen] = useState(false);
   const [isDeletePopupOpen, setIsDeletePopupOpen] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isEditingTitle, setIsEditingTitle] = useState(item.title === "");
   const [localTitle, setLocalTitle] = useState(item.title);
   const descriptionRef = useRef<HTMLTextAreaElement>(null);
+  const tagContainerRef = useRef<HTMLDivElement>(null);
   const daysLeft = getDaysLeft(item.dueDate);
   const isOverdue = daysLeft < 0;
   const showDaysLeft = !item.completed && daysLeft <= 14;
@@ -98,11 +99,24 @@ export function TaskItem({
     const textarea = descriptionRef.current;
     if (textarea) {
       textarea.style.height = "auto";
-      const newHeight = Math.min(textarea.scrollHeight, 70);
+      const newHeight = Math.min(textarea.scrollHeight, 60);
       textarea.style.height = `${newHeight}px`;
-      textarea.style.overflowY = textarea.scrollHeight > 70 ? "scroll" : "hidden";
+      textarea.style.overflowY = textarea.scrollHeight > 60 ? "scroll" : "hidden";
     }
   }, [item.description]);
+
+  // Click outside for tag popup
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (tagContainerRef.current && !tagContainerRef.current.contains(event.target as Node)) {
+        setIsTagPopupOpen(false);
+      }
+    };
+    if (isTagPopupOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isTagPopupOpen]);
 
   const toggleTag = (tag: TaskTag) => {
     const currentTags = item.tags || [];
@@ -123,8 +137,13 @@ export function TaskItem({
       <div className="flex items-start gap-4">
         {/* Checkbox */}
         <button
-          onClick={() => onToggleComplete(item.id, !item.completed)}
-          className={`mt-0.5 w-5 h-5 rounded border-2 flex items-center justify-center transition-colors flex-shrink-0 ${
+          onClick={() => {
+            onToggleComplete(item.id, !item.completed);
+            if (!item.completed && isExpanded) {
+              onToggleExpand();
+            }
+          }}
+          className={`mt-0.5 w-5 h-5 rounded border-2 flex items-center justify-center transition-colors flex-shrink-0 cursor-pointer ${
             item.completed
               ? "bg-white border-[#828282]"
               : "border-[#828282]"
@@ -182,7 +201,7 @@ export function TaskItem({
               </span>
               <button
                 onClick={onToggleExpand}
-                className="p-1 hover:bg-gray-100 rounded transition-colors"
+                className="p-1 hover:bg-gray-100 rounded transition-colors cursor-pointer"
               >
                 {isExpanded ? (
                   <ChevronUp className="w-4 h-4 text-[#4F4F4F]" />
@@ -193,7 +212,7 @@ export function TaskItem({
               <div className="relative">
                 <button 
                   onClick={() => setIsDeletePopupOpen(!isDeletePopupOpen)}
-                  className="p-1 hover:bg-gray-100 rounded transition-colors"
+                  className="p-1 hover:bg-gray-100 rounded transition-colors cursor-pointer"
                 >
                   <MoreHorizontal className="w-4 h-4 text-[#4F4F4F]" />
                 </button>
@@ -208,10 +227,10 @@ export function TaskItem({
                     >
                       <button
                         onClick={() => {
-                          onDelete?.(item.id);
                           setIsDeletePopupOpen(false);
+                          setShowDeleteConfirm(true);
                         }}
-                        className="px-6 py-2 text-sm text-[#EB5757] font-medium hover:bg-gray-50 whitespace-nowrap transition-colors"
+                        className="px-6 py-2 text-sm text-[#EB5757] font-medium hover:bg-gray-50 whitespace-nowrap transition-colors cursor-pointer"
                       >
                         Delete
                       </button>
@@ -251,12 +270,12 @@ export function TaskItem({
                       onChange={(e) => onUpdateDescription?.(item.id, e.target.value)}
                       placeholder="No Description"
                       className="flex-1 px-0 py-1 text-sm text-[#4F4F4F] placeholder-[#828282] focus:outline-none resize-none bg-transparent"
-                      style={{ maxHeight: '70px' }}
+                      style={{ maxHeight: '60px' }}
                     />
                   </div>
 
                   {/* Tags */}
-                  <div className="relative">
+                  <div className="relative" ref={tagContainerRef}>
                     <div 
                       onClick={() => setIsTagPopupOpen(!isTagPopupOpen)}
                       className={`flex items-start gap-4 p-2 rounded cursor-pointer transition-all ${
@@ -298,7 +317,7 @@ export function TaskItem({
                                   e.stopPropagation();
                                   toggleTag(tag);
                                 }}
-                                className={`w-full text-left px-3 py-2 rounded-md text-sm font-bold transition-colors border ${
+                                className={`w-full text-left px-3 py-2 rounded-md text-sm font-bold transition-colors border cursor-pointer ${
                                   isSelected ? 'border-[#2F80ED]' : 'border-transparent'
                                 }`}
                                 style={{ 
@@ -320,6 +339,51 @@ export function TaskItem({
           </AnimatePresence>
         </div>
       </div>
+
+      {/* Delete Confirmation Modal (Reusing Chat Style) */}
+      <AnimatePresence>
+        {showDeleteConfirm && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100]"
+            onClick={() => setShowDeleteConfirm(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white rounded-lg p-6 w-80 shadow-xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 className="font-semibold text-gray-800 mb-2">
+                Delete Task
+              </h3>
+              <p className="text-sm text-gray-600 mb-4">
+                Are you sure you want to delete this task?
+              </p>
+              <div className="flex justify-end gap-2">
+                <button
+                  onClick={() => setShowDeleteConfirm(false)}
+                  className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    onDelete?.(item.id);
+                    setShowDeleteConfirm(false);
+                  }}
+                  className="px-4 py-2 text-sm bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors cursor-pointer"
+                >
+                  Delete
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

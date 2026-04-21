@@ -84,7 +84,7 @@ export function TaskPanel({
         <div className="relative">
           <button
             onClick={() => setIsCategoryOpen(!isCategoryOpen)}
-            className="flex items-center gap-2 px-3 py-1.5 border border-[#828282] rounded-md text-[#4F4F4F] font-bold text-sm hover:bg-gray-50 transition-colors"
+            className="flex items-center gap-2 px-3 py-1.5 border border-[#828282] rounded-md text-[#4F4F4F] font-bold text-sm hover:bg-gray-50 transition-colors cursor-pointer"
           >
             {selectedCategory}
             <ChevronDown className={`w-4 h-4 text-[#4F4F4F] transition-transform ${isCategoryOpen ? 'rotate-180' : ''}`} />
@@ -99,7 +99,7 @@ export function TaskPanel({
                     setSelectedCategory(category);
                     setIsCategoryOpen(false);
                   }}
-                  className="w-full text-left px-4 py-2 text-sm text-[#4F4F4F] font-bold hover:bg-[#F2F2F2] border-b border-[#828282] last:border-0"
+                  className="w-full text-left px-4 py-2 text-sm text-[#4F4F4F] font-bold hover:bg-[#F2F2F2] border-b border-[#828282] last:border-0  cursor-pointer"
                 >
                   {category}
                 </button>
@@ -111,7 +111,7 @@ export function TaskPanel({
         {onAdd && (
           <button
             onClick={onAdd}
-            className="px-4 py-2 bg-[#2F80ED] hover:bg-[#2F80ED]/90 text-white text-sm font-bold rounded-md transition-colors"
+            className="px-4 py-2 bg-[#2F80ED] hover:bg-[#2F80ED]/90 text-white text-sm font-bold rounded-md transition-colors cursor-pointer"
           >
             New Task
           </button>

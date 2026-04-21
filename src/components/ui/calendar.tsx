@@ -66,8 +66,8 @@ export function Calendar({ selected, onSelect, className }: CalendarProps) {
 
       {/* Weekdays */}
       <div className="grid grid-cols-7 mb-2">
-        {["M", "T", "W", "Th", "F", "S", "S"].map((day) => (
-          <div key={day} className="text-center text-sm font-bold text-[#4F4F4F] py-1">
+        {["M", "T", "W", "Th", "F", "S", "S"].map((day, index) => (
+          <div key={`${day}-${index}`} className="text-center text-sm font-bold text-[#4F4F4F] py-1">
             {day}
           </div>
         ))}
