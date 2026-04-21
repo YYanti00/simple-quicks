@@ -566,5 +566,6 @@ export function Chat({ thread, hasNewMessages, onBack, onClose }: ChatProps) {
         )}
       </AnimatePresence>
     </>
-  );}
+  );
 }
+
