@@ -1,65 +1,291 @@
-import Image from "next/image";
+"use client";
+
+import { useEffect, useState } from "react";
+import { BookOpenText, MessagesSquare, ZapIcon, Trash2 } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import { ActionButton } from "@/components/action-button";
+import { Panel, PanelItem } from "@/components/panel";
+import {
+  fetchInbox,
+  fetchTasks,
+  createMessage,
+  deleteMessage,
+  updateTask,
+  deleteTask,
+  createTask,
+} from "@/services/api";
+
+type ViewState = "closed" | "menu" | "inbox" | "task";
 
 export default function Home() {
+  const [view, setView] = useState<ViewState>("closed");
+  const [inboxItems, setInboxItems] = useState<PanelItem[]>([]);
+  const [taskItems, setTaskItems] = useState<PanelItem[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const isMenu = view === "menu";
+  const isInbox = view === "inbox";
+  const isTask = view === "task";
+
+  // Load data when view changes
+  useEffect(() => {
+    if (isInbox && inboxItems.length === 0) {
+      loadInbox();
+    }
+    if (isTask && taskItems.length === 0) {
+      loadTasks();
+    }
+  }, [isInbox, isTask]);
+
+  async function loadInbox() {
+    setLoading(true);
+    setError(null);
+    try {
+      const items = await fetchInbox();
+      setInboxItems(items);
+    } catch (err) {
+      setError("Failed to load inbox");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function loadTasks() {
+    setLoading(true);
+    setError(null);
+    try {
+      const items = await fetchTasks();
+      setTaskItems(items);
+    } catch (err) {
+      setError("Failed to load tasks");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // =================== CRUD: INBOX ===================
+  async function handleCreateMessage() {
+    try {
+      const newPost = await createMessage(
+        "New Message",
+        "This is a new message created via API",
+      );
+      const newItem: PanelItem = {
+        id: String(newPost.id),
+        avatar: "ME",
+        title: newPost.title,
+        subtitle: "You:",
+        date: new Date().toLocaleDateString(),
+        description: newPost.body.slice(0, 100),
+        unread: true,
+      };
+      setInboxItems((prev) => [newItem, ...prev]);
+    } catch (err) {
+      alert("Failed to create message");
+    }
+  }
+
+  async function handleDeleteMessage(id: string) {
+    try {
+      await deleteMessage(Number(id));
+      setInboxItems((prev) => prev.filter((item) => item.id !== id));
+    } catch (err) {
+      alert("Failed to delete message");
+    }
+  }
+
+  // =================== CRUD: TASKS ===================
+  async function handleCreateTask() {
+    try {
+      const newTodo = await createTask("New Task");
+      const newItem: PanelItem = {
+        id: String(newTodo.id),
+        avatar: "○",
+        title: newTodo.title,
+        date: "Due today",
+        description: "Task pending completion",
+        unread: true,
+      };
+      setTaskItems((prev) => [newItem, ...prev]);
+    } catch (err) {
+      alert("Failed to create task");
+    }
+  }
+
+  async function handleToggleTask(id: string, currentStatus: boolean) {
+    try {
+      await updateTask(Number(id), !currentStatus);
+      setTaskItems((prev) =>
+        prev.map((item) =>
+          item.id === id
+            ? {
+                ...item,
+                avatar: !currentStatus ? "✓" : "○",
+                date: !currentStatus ? "Completed" : item.date,
+                description: !currentStatus
+                  ? "Task completed successfully"
+                  : "Task pending completion",
+                unread: currentStatus,
+              }
+            : item,
+        ),
+      );
+    } catch (err) {
+      alert("Failed to update task");
+    }
+  }
+
+  async function handleDeleteTask(id: string) {
+    try {
+      await deleteTask(Number(id));
+      setTaskItems((prev) => prev.filter((item) => item.id !== id));
+    } catch (err) {
+      alert("Failed to delete task");
+    }
+  }
+
+  const handleMainClick = () => {
+    setView(view === "closed" ? "menu" : "closed");
+  };
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
+    <div className="flex flex-col flex-1 items-end justify-end p-6">
+      <div className="flex flex-row items-end gap-4 relative">
+        <AnimatePresence mode="wait">
+          {(isMenu || isInbox) && (
+            <ActionButton
+              key={isMenu ? "task-menu" : "task-inactive"}
+              variant="task"
+              layoutId="task-btn"
+              label={isMenu ? "Task" : undefined}
+              icon={BookOpenText}
+              onClick={() => setView("task")}
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence mode="wait">
+          {(isMenu || isTask) && (
+            <ActionButton
+              key={isMenu ? "inbox-menu" : "inbox-inactive"}
+              variant="inbox"
+              layoutId="inbox-btn"
+              label={isMenu ? "Inbox" : undefined}
+              icon={MessagesSquare}
+              onClick={() => setView("inbox")}
+              delay={isMenu ? 0.05 : 0}
+            />
+          )}
+        </AnimatePresence>
+
+        <div className="relative flex flex-col items-center">
+          {/* Panels - positioned absolute above buttons */}
+          <AnimatePresence>
+            {isInbox && (
+              <Panel
+                isOpen={isInbox}
+                title="Inbox"
+                icon={MessagesSquare}
+                items={inboxItems}
+                onClose={() => setView("menu")}
+                onItemClick={handleDeleteMessage}
+                searchPlaceholder="Search inbox..."
+                loading={loading}
+                error={error}
+                onRefresh={loadInbox}
+                onAdd={handleCreateMessage}
+                addButtonLabel="New Message"
+              />
+            )}
+          </AnimatePresence>
+
+          <AnimatePresence>
+            {isTask && (
+              <Panel
+                isOpen={isTask}
+                title="Tasks"
+                icon={BookOpenText}
+                items={taskItems}
+                onClose={() => setView("menu")}
+                onItemClick={(id) => {
+                  const item = taskItems.find((t) => t.id === id);
+                  handleToggleTask(id, item?.avatar === "✓");
+                }}
+                searchPlaceholder="Search tasks..."
+                emptyMessage="No tasks pending"
+                loading={loading}
+                error={error}
+                onRefresh={loadTasks}
+                onAdd={handleCreateTask}
+                addButtonLabel="New Task"
+              />
+            )}
+          </AnimatePresence>
+
+          <AnimatePresence mode="wait">
+            {(view === "closed" || isMenu) && (
+              <ActionButton
+                key="main-btn"
+                variant="main"
+                layoutId="main-btn"
+                icon={ZapIcon}
+                onClick={handleMainClick}
+                iconFill="white"
+              />
+            )}
+
+            {(isInbox || isTask) && (
+              <motion.div
+                key="main-shadow"
+                layout
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 0.9 }}
+                exit={{ opacity: 0, scale: 0.8 }}
+                transition={{ duration: 0.25 }}
+                className="absolute right-3 bottom-0"
+              >
+                <ActionButton
+                  variant="shadow"
+                  icon={ZapIcon}
+                  onClick={handleMainClick}
+                  iconFill="white"
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <AnimatePresence>
+            {isInbox && (
+              <div className="relative z-20">
+                <ActionButton
+                  key="inbox-active"
+                  variant="active-inbox"
+                  layoutId="inbox-btn"
+                  label=" "
+                  icon={MessagesSquare}
+                  onClick={() => setView("menu")}
+                />
+              </div>
+            )}
+          </AnimatePresence>
+
+          <AnimatePresence>
+            {isTask && (
+              <div className="relative z-20">
+                <ActionButton
+                  key="task-active"
+                  variant="active-task"
+                  layoutId="task-btn"
+                  label=" "
+                  icon={BookOpenText}
+                  onClick={() => setView("menu")}
+                />
+              </div>
+            )}
+          </AnimatePresence>
         </div>
-      </main>
+      </div>
     </div>
   );
 }
