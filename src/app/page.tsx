@@ -6,6 +6,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { ActionButton } from "@/components/action-button";
 import { Panel, type PanelItem } from "@/components/panel";
 import { PanelContainer } from "@/components/panel-container";
+import { TaskPanel, type TaskItem } from "@/components/task-panel";
 import { Chat, ChatThread } from "@/components/chat";
 import { generateMockThread } from "@/services/api";
 import {
@@ -24,7 +25,7 @@ type ViewState = "closed" | "menu" | "inbox" | "task" | "chat";
 export default function Home() {
   const [view, setView] = useState<ViewState>("closed");
   const [inboxItems, setInboxItems] = useState<PanelItem[]>([]);
-  const [taskItems, setTaskItems] = useState<PanelItem[]>([]);
+  const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeChat, setActiveChat] = useState<ChatThread | null>(null);
@@ -42,7 +43,7 @@ export default function Home() {
     if (isInbox && inboxItems.length === 0) {
       loadInbox();
     }
-    if (isTask && taskItems.length === 0) {
+    if (isTask && tasks.length === 0) {
       loadTasks();
     }
   }, [isInbox, isTask]);
@@ -64,8 +65,36 @@ export default function Home() {
     setLoading(true);
     setError(null);
     try {
-      const items = await fetchTasks();
-      setTaskItems(items);
+      const todos = await fetchTasks();
+      // Convert PanelItems to TaskItems with generated due dates
+      const mockTitles = [
+        "Cross-reference with Jeanne for Case #192813",
+        "Contact Andrew for Online Meeting and Conference",
+        "Check and Revise Homework from Andre Gonzales",
+      ];
+      const mockTags = [
+        [
+          { label: "Important ASAP", color: "#E5A443" },
+          { label: "Offline Meeting", color: "#9B51E0" },
+        ],
+        [],
+        [
+          { label: "Client Related", color: "#43B78D" },
+          { label: "Self Task", color: "#2F80ED" },
+        ],
+      ];
+
+      const taskItemsWithDates: TaskItem[] = todos.map((item, index) => ({
+        id: item.id,
+        title: index < mockTitles.length ? mockTitles[index] : item.title,
+        completed: index === 1 || index === 2, // Mock some completed
+        dueDate: new Date(Date.now() + (index === 0 ? 2 : index + 1) * 86400000)
+          .toISOString()
+          .split("T")[0],
+        description: item.description,
+        tags: index < mockTags.length ? mockTags[index] : [],
+      }));
+      setTasks(taskItemsWithDates);
     } catch (err) {
       setError("Failed to load tasks");
     } finally {
@@ -80,8 +109,10 @@ export default function Home() {
         "New Message",
         "This is a new message created via API",
       );
+      // Generate a truly unique ID for client-side state because the mock API returns static ID 101
+      const uniqueId = `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       const newItem: PanelItem = {
-        id: String(newPost.id),
+        id: uniqueId,
         avatar: "ME",
         title: newPost.title,
         subtitle: "You:",
@@ -144,37 +175,28 @@ export default function Home() {
   // =================== CRUD: TASKS ===================
   async function handleCreateTask() {
     try {
-      const newTodo = await createTask("New Task");
-      const newItem: PanelItem = {
-        id: String(newTodo.id),
-        avatar: "○",
-        title: newTodo.title,
-        date: "Due today",
-        description: "Task pending completion",
-        unread: true,
+      const newTodo = await createTask("");
+      // Generate a truly unique ID for client-side state because the mock API returns static ID 201
+      const uniqueId = `task-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      const newTask: TaskItem = {
+        id: uniqueId,
+        title: "",
+        completed: false,
+        dueDate: new Date(Date.now() + 86400000).toISOString().split("T")[0],
+        description: "",
       };
-      setTaskItems((prev) => [newItem, ...prev]);
+      setTasks((prev: TaskItem[]) => [...prev, newTask]);
     } catch (err) {
       alert("Failed to create task");
     }
   }
 
-  async function handleToggleTask(id: string, currentStatus: boolean) {
+  async function handleToggleTask(id: string, completed: boolean) {
     try {
-      await updateTask(Number(id), !currentStatus);
-      setTaskItems((prev) =>
-        prev.map((item) =>
-          item.id === id
-            ? {
-                ...item,
-                avatar: !currentStatus ? "✓" : "○",
-                date: !currentStatus ? "Completed" : item.date,
-                description: !currentStatus
-                  ? "Task completed successfully"
-                  : "Task pending completion",
-                unread: currentStatus,
-              }
-            : item,
+      await updateTask(Number(id), completed);
+      setTasks((prev: TaskItem[]) =>
+        prev.map((task: TaskItem) =>
+          task.id === id ? { ...task, completed } : task,
         ),
       );
     } catch (err) {
@@ -182,10 +204,44 @@ export default function Home() {
     }
   }
 
+  function handleUpdateTaskDate(id: string, date: string) {
+    setTasks((prev: TaskItem[]) =>
+      prev.map((task: TaskItem) =>
+        task.id === id ? { ...task, dueDate: date } : task,
+      ),
+    );
+  }
+
+  function handleUpdateTaskDescription(id: string, description: string) {
+    setTasks((prev: TaskItem[]) =>
+      prev.map((task: TaskItem) =>
+        task.id === id ? { ...task, description } : task,
+      ),
+    );
+  }
+
+  function handleUpdateTaskTitle(id: string, title: string) {
+    setTasks((prev: TaskItem[]) =>
+      prev.map((task: TaskItem) =>
+        task.id === id ? { ...task, title } : task,
+      ),
+    );
+  }
+
+  function handleUpdateTaskTags(id: string, tags: TaskItem["tags"]) {
+    setTasks((prev: TaskItem[]) =>
+      prev.map((task: TaskItem) =>
+        task.id === id ? { ...task, tags } : task,
+      ),
+    );
+  }
+
   async function handleDeleteTask(id: string) {
     try {
       await deleteTask(Number(id));
-      setTaskItems((prev) => prev.filter((item) => item.id !== id));
+      setTasks((prev: TaskItem[]) =>
+        prev.filter((task: TaskItem) => task.id !== id),
+      );
     } catch (err) {
       alert("Failed to delete task");
     }
@@ -266,23 +322,18 @@ export default function Home() {
               </>
             )}
             {isTask && (
-              <Panel
-                title="Tasks"
-                icon={BookOpenText}
-                items={taskItems}
-                onClose={() => setView("menu")}
-                onItemClick={(id) => {
-                  const item = taskItems.find((t) => t.id === id);
-                  handleToggleTask(id, item?.avatar === "✓");
-                }}
-                searchPlaceholder="Search tasks..."
-                emptyMessage="No tasks pending"
-                loading={loading}
-                error={error}
-                onRefresh={loadTasks}
-                onAdd={handleCreateTask}
-                addButtonLabel="New Task"
-              />
+              <TaskPanel
+              items={tasks}
+              loading={loading}
+              onClose={() => setView("menu")}
+              onToggle={handleToggleTask}
+              onAdd={handleCreateTask}
+              onUpdateDate={handleUpdateTaskDate}
+               onUpdateDescription={handleUpdateTaskDescription}
+               onUpdateTitle={handleUpdateTaskTitle}
+               onUpdateTags={handleUpdateTaskTags}
+               onDelete={handleDeleteTask}
+             />
             )}
           </PanelContainer>
 
