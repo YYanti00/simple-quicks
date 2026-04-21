@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { ChevronDown, Loader2 } from "lucide-react";
 import { TaskItem, type TaskItemData } from "./task-item";
+import { LoadingIndicator } from "./ui/loading-indicator";
 
 export type { TaskItemData as TaskItem };
 
@@ -121,10 +122,7 @@ export function TaskPanel({
       {/* Task List */}
       <div className="flex-1 overflow-y-auto px-8 pb-6">
         {loading ? (
-          <div className="flex flex-col items-center justify-center py-20 gap-3">
-            <Loader2 className="w-8 h-8 text-[#828282] animate-spin" />
-            <span className="text-[#4F4F4F] text-sm">Loading Task List...</span>
-          </div>
+          <LoadingIndicator message="Loading Task List ..." />
         ) : items.length === 0 ? (
           <div className="text-center py-20">
             <p className="text-[#828282] text-sm font-medium">No tasks found</p>

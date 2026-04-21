@@ -1,11 +1,7 @@
-// JSONPlaceholder API Service
-// Free fake REST API - https://jsonplaceholder.typicode.com/
-
-import { PanelItem } from "@/components/panel";
+import { PanelItem } from "@/components/chat-panel";
 
 const BASE_URL = "https://jsonplaceholder.typicode.com";
 
-// Types matching JSONPlaceholder schema
 export interface Post {
   userId: number;
   id: number;
@@ -28,12 +24,11 @@ export interface User {
 
 export type { PanelItem };
 
-// Chat types matching chat.tsx
 export interface ChatMessage {
   id: string;
   sender: string;
   senderName: string;
-  senderColor: "purple" | "orange" | "teal";
+  senderColor: "purple" | "orange" | "teal" | "blue";
   content: string;
   timestamp: string;
   isMe: boolean;
@@ -52,7 +47,6 @@ export interface ChatThread {
   messages: ChatMessage[];
 }
 
-// JSONPlaceholder Comment type
 interface Comment {
   postId: number;
   id: number;
@@ -65,11 +59,11 @@ interface Comment {
 
 export async function fetchInbox(): Promise<PanelItem[]> {
   const [posts, users] = await Promise.all([
-    fetch(`${BASE_URL}/posts?_limit=5`).then<Post[]>((r) => r.json()),
+    fetch(`${BASE_URL}/posts?_limit=4`).then<Post[]>((r) => r.json()),
     fetch(`${BASE_URL}/users?_limit=5`).then<User[]>((r) => r.json()),
   ]);
 
-  return posts.map((post, index) => {
+  const items: PanelItem[] = posts.map((post, index) => {
     const user =
       users.find((u) => u.id === post.userId) || users[index % users.length];
     const initials =
@@ -93,10 +87,22 @@ export async function fetchInbox(): Promise<PanelItem[]> {
         hour12: false,
       }),
       description: post.body.slice(0, 100),
-      unread: index < 2, // First 2 are unread
+      unread: index < 2, 
     };
     return item;
   });
+
+  items.unshift({
+    id: "999",
+    avatar: "F",
+    title: "Fast Visa Support",
+    subtitle: "Hey there! How can we help you today?",
+    date: "02/06/2021 10:45",
+    description: "Hey there! How can we help you today?",
+    unread: false,
+  });
+
+  return items;
 }
 
 export async function createMessage(
@@ -112,7 +118,7 @@ export async function createMessage(
       userId: 1,
     }),
   });
-  return response.json(); // Returns created object with id: 101
+  return response.json(); 
 }
 
 export async function updateMessage(
@@ -165,7 +171,7 @@ export async function createTask(title: string): Promise<Todo> {
       userId: 1,
     }),
   });
-  return response.json(); // Returns created object with id: 201
+  return response.json(); 
 }
 
 export async function updateTask(
@@ -192,14 +198,29 @@ const senderColors: ("purple" | "orange" | "teal")[] = [
   "teal",
 ];
 
-/**
- * Fetches a post and its comments from JSONPlaceholder to create a chat thread.
- * Uses the post as the thread title and comments as messages.
- */
 export async function fetchThreadFromPost(
   postId: number,
   currentUserId: number = 1,
 ): Promise<ChatThread> {
+  if (postId === 999) {
+    return {
+      id: "999",
+      title: "Fast Visa Support",
+      participants: 1,
+      messages: [
+        {
+          id: "fv-1",
+          sender: "fast-visa",
+          senderName: "FastVisa Support",
+          senderColor: "blue",
+          content: "Hey there. Welcome to your inbox! Contact us for more information and help about anything! We'll send you a response as soon as possible.",
+          timestamp: "19:32",
+          isMe: false,
+        }
+      ]
+    };
+  }
+
   const [post, comments, users] = await Promise.all([
     fetch(`${BASE_URL}/posts/${postId}`).then<Post>((r) => r.json()),
     fetch(`${BASE_URL}/posts/${postId}/comments`).then<Comment[]>((r) =>
@@ -208,36 +229,32 @@ export async function fetchThreadFromPost(
     fetch(`${BASE_URL}/users`).then<User[]>((r) => r.json()),
   ]);
 
-  // Create a map of users by email (comments use email, not userId)
   const userByEmail = new Map(users.map((u) => [u.email.toLowerCase(), u]));
 
-  // Map comments to messages
-  const messages: ChatMessage[] = comments.slice(0, 6).map((comment, index) => {
-    const user = userByEmail.get(comment.email.toLowerCase());
-    const isMe = user?.id === currentUserId;
+    const messages: ChatMessage[] = comments.slice(0, 6).map((comment, index) => {
+      const isMe = index === 1 || index === 3 || index === 5;
 
-    // Assign colors based on sender
-    const senderKey = comment.email.split("@")[0] || "unknown";
-    const colorIndex = senderKey.charCodeAt(0) % senderColors.length;
-    const senderColor = senderColors[colorIndex];
+      const senderKey = isMe ? "me" : (comment.email.split("@")[0] || "unknown");
+      const colorIndex = isMe ? 0 : (senderKey.charCodeAt(0) % senderColors.length);
+      const senderColor = senderColors[colorIndex];
 
-    // Generate timestamp (comments don't have dates, so we simulate)
-    const hours = 19 + Math.floor(index / 2);
-    const mins = 30 + (index % 2) * 2;
-    const timestamp = `${hours}:${mins.toString().padStart(2, "0")}`;
+      const hours = 19 + Math.floor(index / 2);
+      const mins = 32 + (index % 2) * 2;
+      const timestamp = `${hours}:${mins.toString().padStart(2, "0")}`;
 
-    return {
-      id: String(comment.id),
-      sender: senderKey,
-      senderName: user?.name || comment.name.split("@")[0] || "Unknown",
-      senderColor,
-      content: comment.body,
-      timestamp,
-      isMe,
-    };
-  });
+      let senderName = isMe ? "You" : (userByEmail.get(comment.email.toLowerCase())?.name || comment.name.split(" ")[0] || "Unknown");
 
-  // If no comments, create a default message
+      return {
+        id: String(comment.id),
+        sender: senderKey,
+        senderName,
+        senderColor,
+        content: comment.body,
+        timestamp,
+        isMe,
+      };
+    });
+
   if (messages.length === 0) {
     messages.push({
       id: "1",
@@ -250,7 +267,6 @@ export async function fetchThreadFromPost(
     });
   }
 
-  // Get unique participants
   const uniqueSenders = new Set(messages.map((m) => m.sender));
 
   return {
@@ -258,75 +274,5 @@ export async function fetchThreadFromPost(
     title: post.title,
     participants: uniqueSenders.size,
     messages,
-  };
-}
-
-/**
- * Alternative: Generate a thread from mock data (kept for fallback)
- */
-export function generateMockThread(itemTitle: string): ChatThread {
-  return {
-    id: Math.random().toString(36).substr(2, 9),
-    title: itemTitle,
-    participants: 3,
-    messages: [
-      {
-        id: "1",
-        sender: "mary",
-        senderName: "Mary Hilda",
-        senderColor: "orange",
-        content: "Just Fill me in for his updates yea?",
-        timestamp: "19:32",
-        isMe: false,
-      },
-      {
-        id: "2",
-        sender: "me",
-        senderName: "You",
-        senderColor: "purple",
-        content:
-          "No worries. It will be completed ASAP. I've asked him yesterday.",
-        timestamp: "19:32",
-        isMe: true,
-      },
-      {
-        id: "3",
-        sender: "mary",
-        senderName: "Mary Hilda",
-        senderColor: "orange",
-        content:
-          "Hello Obaidullah, I will be your case advisor for case #029290. I have assigned some homework for you to fill. Please keep up with the due dates. Should you have any questions, you can message me anytime. Thanks.",
-        timestamp: "19:32",
-        isMe: false,
-      },
-      {
-        id: "4",
-        sender: "me",
-        senderName: "You",
-        senderColor: "purple",
-        content:
-          "Please contact Mary for questions regarding the case bcs she will be managing your forms from now on! Thanks Mary.",
-        timestamp: "19:32",
-        isMe: true,
-      },
-      {
-        id: "5",
-        sender: "mary",
-        senderName: "Mary Hilda",
-        senderColor: "orange",
-        content: "Sure thing. Claren.",
-        timestamp: "19:32",
-        isMe: false,
-      },
-      {
-        id: "6",
-        sender: "obaidullah",
-        senderName: "Obaidullah Amarkhil",
-        senderColor: "teal",
-        content: "Morning. I'll try to do them. Thanks.",
-        timestamp: "19:32",
-        isMe: false,
-      },
-    ],
   };
 }

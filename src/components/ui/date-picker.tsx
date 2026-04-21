@@ -53,7 +53,7 @@ export function DatePicker({ value, onChange, className }: DatePickerProps) {
       <button
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
-          "flex items-center justify-between gap-2 px-3 py-1.5 border border-[#828282] rounded-md text-sm text-[#4F4F4F] bg-white hover:bg-gray-50 transition-colors min-w-[150px]",
+          "flex items-center justify-between gap-2 px-3 py-1.5 border border-[#828282] rounded-md text-sm text-[#4F4F4F] bg-white hover:bg-gray-50 transition-colors min-w-[150px] cursor-pointer",
           isOpen && "border-[#2F80ED]"
         )}
       >

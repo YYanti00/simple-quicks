@@ -1,7 +1,8 @@
 "use client";
 
-import { Search, X, LucideIcon, RefreshCw, Plus, Loader2 } from "lucide-react";
-import { ReactNode } from "react";
+import { Search, X, LucideIcon, RefreshCw, Plus, Loader2, User as UserIcon } from "lucide-react";
+import { ReactNode, useState, useMemo } from "react";
+import { LoadingIndicator } from "./ui/loading-indicator";
 
 interface PanelItem {
   id: string;
@@ -32,7 +33,7 @@ interface PanelProps {
   addButtonLabel?: string;
 }
 
-export function Panel({
+export function ChatPanel({
   title,
   icon: Icon,
   items,
@@ -47,6 +48,20 @@ export function Panel({
   onAdd,
   addButtonLabel,
 }: PanelProps) {
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const filteredItems = useMemo(() => {
+    if (!searchQuery.trim()) return items;
+    
+    const query = searchQuery.toLowerCase();
+    return items.filter(
+      (item) =>
+        item.title.toLowerCase().includes(query) ||
+        item.description.toLowerCase().includes(query) ||
+        item.subtitle?.toLowerCase().includes(query)
+    );
+  }, [items, searchQuery]);
+
   return (
     <>
       <div className="py-5 px-8">
@@ -54,6 +69,8 @@ export function Panel({
           <input
             type="text"
             placeholder={searchPlaceholder}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-10 pr-4 py-2 bg-white border border-(--color-border-2) rounded-sm text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
           <Search className="absolute right-12 top-1/2 -translate-y-1/2 w-4 h-4 text-(--color-bg-dark-1)" />
@@ -63,10 +80,7 @@ export function Panel({
       {/* Items List */}
       <div className="max-h-[500px] overflow-y-auto">
         {loading && (
-          <div className="p-8 flex items-center justify-center gap-2 text-gray-500">
-            <Loader2 className="w-5 h-5 animate-spin" />
-            <span className="text-sm">Loading...</span>
-          </div>
+          <LoadingIndicator message="Loading Chats ..." />
         )}
 
         {error && !loading && (
@@ -83,15 +97,15 @@ export function Panel({
           </div>
         )}
 
-        {!loading && !error && items.length === 0 && (
+        {!loading && !error && filteredItems.length === 0 && (
           <div className="p-8 text-center text-gray-500 text-sm">
-            {emptyMessage}
+            {searchQuery ? `No results found for "${searchQuery}"` : emptyMessage}
           </div>
         )}
 
-        {!loading && !error && items.length > 0 && (
+        {!loading && !error && filteredItems.length > 0 && (
           <div className="divide-y divide-gray-100">
-            {items.map((item) => (
+            {filteredItems.map((item) => (
               <div key={item.id}>
                 {renderItem ? (
                   renderItem(item)
@@ -101,35 +115,25 @@ export function Panel({
                     className="w-full p-4 hover:bg-gray-50 transition-colors text-left  cursor-pointer"
                   >
                     <div className="flex items-start gap-3">
-                      {/* Avatar - Overlapping circles */}
-                      <div className="shrink-0 relative w-10 h-8">
-                        {/* Back circle - gray */}
-                        <div className="absolute left-0 top-0 w-7 h-7 rounded-full bg-gray-200 border-2 border-white flex items-center justify-center">
-                          <svg
-                            className="w-4 h-4 text-gray-500"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={1.5}
-                              d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                            />
-                          </svg>
+                      {/* Avatar - Overlapping circles or Single initial */}
+                      {item.title === "Fast Visa Support" ? (
+                        <div className="shrink-0 w-[51px] flex justify-center">
+                          <div className="w-[34px] h-[34px] rounded-full bg-[#2F80ED] flex items-center justify-center text-white font-bold text-sm">
+                            {item.avatar || "F"}
+                          </div>
                         </div>
-                        {/* Front circle - blue */}
-                        <div className="absolute right-0 bottom-0 w-7 h-7 rounded-full bg-blue-500 border-2 border-white flex items-center justify-center">
-                          <svg
-                            className="w-4 h-4 text-white"
-                            fill="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
-                          </svg>
+                      ) : (
+                        <div className="shrink-0 relative w-[51px] h-[34px]">
+                          {/* Back circle - gray */}
+                          <div className="absolute left-0 top-0 w-[34px] h-[34px] rounded-full bg-[#E0E0E0] flex items-center justify-center">
+                            <UserIcon className="w-4 h-4 text-[#4F4F4F]" />
+                          </div>
+                          {/* Front circle - blue */}
+                          <div className="absolute right-0 top-0 w-[34px] h-[34px] rounded-full bg-[#2F80ED] flex items-center justify-center">
+                            <UserIcon className="w-4 h-4 text-white" />
+                          </div>
                         </div>
-                      </div>
+                      )}
 
                       {/* Content */}
                       <div className="flex-1 min-w-0">

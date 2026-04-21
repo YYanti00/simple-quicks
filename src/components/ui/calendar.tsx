@@ -53,13 +53,13 @@ export function Calendar({ selected, onSelect, className }: CalendarProps) {
     <div className={cn("p-4 w-[280px] bg-white border border-[#828282] rounded-md", className)}>
       {/* Header */}
       <div className="flex items-center justify-between mb-4 px-2">
-        <button onClick={prevMonth} className="p-1 hover:bg-gray-100 rounded">
+        <button onClick={prevMonth} className="p-1 hover:bg-gray-100 rounded cursor-pointer">
           <ChevronLeft className="w-4 h-4 text-[#4F4F4F]" />
         </button>
         <div className="text-sm font-bold text-[#4F4F4F]">
           {months[currentMonth]} {currentYear}
         </div>
-        <button onClick={nextMonth} className="p-1 hover:bg-gray-100 rounded">
+        <button onClick={nextMonth} className="p-1 hover:bg-gray-100 rounded cursor-pointer">
           <ChevronRight className="w-4 h-4 text-[#4F4F4F]" />
         </button>
       </div>
@@ -85,7 +85,7 @@ export function Calendar({ selected, onSelect, className }: CalendarProps) {
               key={day}
               onClick={() => onSelect?.(new Date(currentYear, currentMonth, day))}
               className={cn(
-                "h-8 w-8 flex items-center justify-center text-sm rounded-full transition-all mx-auto",
+                "h-8 w-8 flex items-center justify-center text-sm rounded-full transition-all mx-auto cursor-pointer",
                 selected_ 
                   ? "border border-[#2F80ED] text-[#4F4F4F]" 
                   : "text-[#4F4F4F] hover:bg-gray-100"

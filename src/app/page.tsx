@@ -4,11 +4,11 @@ import { useEffect, useState } from "react";
 import { BookOpenText, MessagesSquare, ZapIcon, Trash2 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { ActionButton } from "@/components/action-button";
-import { Panel, type PanelItem } from "@/components/panel";
+import { ChatPanel, type PanelItem } from "@/components/chat-panel";
 import { PanelContainer } from "@/components/panel-container";
 import { TaskPanel, type TaskItem } from "@/components/task-panel";
 import { Chat, ChatThread } from "@/components/chat";
-import { generateMockThread } from "@/services/api";
+import { LoadingIndicator } from "@/components/ui/loading-indicator";
 import {
   fetchInbox,
   fetchTasks,
@@ -38,7 +38,6 @@ export default function Home() {
   const isTask = view === "task";
   const isChat = view === "chat";
 
-  // Load data when view changes
   useEffect(() => {
     if (isInbox && inboxItems.length === 0) {
       loadInbox();
@@ -66,35 +65,18 @@ export default function Home() {
     setError(null);
     try {
       const todos = await fetchTasks();
-      // Convert PanelItems to TaskItems with generated due dates
-      const mockTitles = [
-        "Cross-reference with Jeanne for Case #192813",
-        "Contact Andrew for Online Meeting and Conference",
-        "Check and Revise Homework from Andre Gonzales",
-      ];
-      const mockTags = [
-        [
-          { label: "Important ASAP", color: "#E5A443" },
-          { label: "Offline Meeting", color: "#9B51E0" },
-        ],
-        [],
-        [
-          { label: "Client Related", color: "#43B78D" },
-          { label: "Self Task", color: "#2F80ED" },
-        ],
-      ];
-
-      const taskItemsWithDates: TaskItem[] = todos.map((item, index) => ({
+      
+      const taskItems: TaskItem[] = todos.map((item, index) => ({
         id: item.id,
-        title: index < mockTitles.length ? mockTitles[index] : item.title,
-        completed: index === 1 || index === 2, // Mock some completed
-        dueDate: new Date(Date.now() + (index === 0 ? 2 : index + 1) * 86400000)
+        title: item.title,
+        completed: index % 3 === 0, // Mix completed status
+        dueDate: new Date(Date.now() + (index + 1) * 86400000)
           .toISOString()
           .split("T")[0],
-        description: item.description,
-        tags: index < mockTags.length ? mockTags[index] : [],
+        description: item.description || "No description provided from API.",
+        tags: [], // Tags will be added by the user
       }));
-      setTasks(taskItemsWithDates);
+      setTasks(taskItems);
     } catch (err) {
       setError("Failed to load tasks");
     } finally {
@@ -102,14 +84,12 @@ export default function Home() {
     }
   }
 
-  // =================== CRUD: INBOX ===================
   async function handleCreateMessage() {
     try {
       const newPost = await createMessage(
         "New Message",
         "This is a new message created via API",
       );
-      // Generate a truly unique ID for client-side state because the mock API returns static ID 101
       const uniqueId = `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       const newItem: PanelItem = {
         id: uniqueId,
@@ -137,20 +117,17 @@ export default function Home() {
     setView("chat");
 
     try {
-      // Fetch dynamic thread from API
       const thread = await fetchThreadFromPost(postId);
       setActiveChat(thread);
       setActiveChatHasNewMessages(wasUnread);
     } catch (err) {
-      // Fallback to mock data if API fails
-      const thread = generateMockThread(item.title);
-      setActiveChat(thread);
-      setActiveChatHasNewMessages(wasUnread);
+      console.error("Failed to load thread:", err);
+      alert("Failed to load conversation. Please try again.");
+      setView("inbox");
     } finally {
       setChatLoading(false);
     }
 
-    // Mark as read if it was unread
     if (wasUnread) {
       setInboxItems((prev) =>
         prev.map((i) => (i.id === id ? { ...i, unread: false } : i)),
@@ -172,11 +149,9 @@ export default function Home() {
     setView("inbox");
   }
 
-  // =================== CRUD: TASKS ===================
   async function handleCreateTask() {
     try {
       const newTodo = await createTask("");
-      // Generate a truly unique ID for client-side state because the mock API returns static ID 201
       const uniqueId = `task-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       const newTask: TaskItem = {
         id: uniqueId,
@@ -288,7 +263,7 @@ export default function Home() {
             onClose={() => setView("menu")}
           >
             {isInbox && (
-              <Panel
+              <ChatPanel
                 title="Inbox"
                 icon={MessagesSquare}
                 items={inboxItems}
@@ -306,10 +281,7 @@ export default function Home() {
               <>
                 {chatLoading ? (
                   <div className="flex-1 flex items-center justify-center">
-                    <div className="flex items-center gap-2 text-gray-500">
-                      <div className="w-5 h-5 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin" />
-                      <span className="text-sm">Loading conversation...</span>
-                    </div>
+                    <LoadingIndicator message="Loading Chats ..." />
                   </div>
                 ) : activeChat ? (
                   <Chat

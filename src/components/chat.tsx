@@ -3,12 +3,13 @@
 import { useState, useRef, useEffect, ReactElement } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, X, MoreHorizontal, Send } from "lucide-react";
+import { DeleteConfirmationModal } from "./ui/delete-confirmation-modal";
 
 export interface ChatMessage {
   id: string;
   sender: string;
   senderName: string;
-  senderColor: "purple" | "orange" | "teal";
+  senderColor: "purple" | "orange" | "teal" | "blue";
   content: string;
   timestamp: string;
   isMe: boolean;
@@ -35,15 +36,17 @@ interface ChatProps {
 }
 
 const senderColors = {
-  purple: "bg-purple-100 text-purple-900",
-  orange: "bg-orange-100 text-orange-900",
-  teal: "bg-teal-100 text-teal-900",
+  purple: "bg-[#EEDCFF] text-[#4F4F4F]",
+  orange: "bg-[#FCEED3] text-[#4F4F4F]",
+  teal: "bg-[#D2F2EA] text-[#4F4F4F]",
+  blue: "bg-[#F8F8F8] text-[#4F4F4F]",
 };
 
 const senderNameColors = {
-  purple: "text-purple-600",
-  orange: "text-orange-600",
-  teal: "text-teal-600",
+  purple: "text-[#9B51E0]",
+  orange: "text-[#E5A443]",
+  teal: "text-[#43B78D]",
+  blue: "text-[#2F80ED]",
 };
 
 // Auto-resizing textarea component
@@ -108,6 +111,7 @@ export function Chat({ thread, hasNewMessages, onBack, onClose }: ChatProps) {
   const [showNewMessage, setShowNewMessage] = useState(false);
   const [newMessage, setNewMessage] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>(thread.messages);
+  const [isConnecting, setIsConnecting] = useState(false);
   const [editingMessage, setEditingMessage] = useState<ChatMessage | null>(
     null,
   );
@@ -176,6 +180,11 @@ export function Chat({ thread, hasNewMessages, onBack, onClose }: ChatProps) {
           : undefined,
       };
       setMessages((prev) => [...prev, newMsg]);
+
+      // If it's Fast Visa Support, show the connecting status
+      if (thread.title === "Fast Visa Support") {
+        setIsConnecting(true);
+      }
     }
     setNewMessage("");
     setReplyTo(null);
@@ -213,20 +222,21 @@ export function Chat({ thread, hasNewMessages, onBack, onClose }: ChatProps) {
     let lastDate: string | null = null;
 
     // Find where new messages start (for unread indicator)
-    const newMessageIndex = messages.findIndex(
-      (m) => m.sender === "obaidullah",
-    );
+    // In our mock API, we want the last message to be the "new" one if hasNewMessages is true
+    // But we don't show it for Fast Visa Support
+    const isFastVisa = thread.title === "Fast Visa Support";
+    const newMessageIndex = isFastVisa ? -1 : messages.length - 1;
 
     messages.forEach((msg, index) => {
       // Date separator
-      if (index === 2) {
+      if (index === 0) {
         elements.push(
           <div
             key="date-sep"
             className="flex items-center justify-center gap-3 my-4"
           >
             <div className="flex-1 h-px bg-gray-300" />
-            <span className="text-sm text-gray-500">Today June 09, 2021</span>
+            <span className="text-sm text-gray-700 font-bold">Today June 09, 2021</span>
             <div className="flex-1 h-px bg-gray-300" />
           </div>,
         );
@@ -239,11 +249,16 @@ export function Chat({ thread, hasNewMessages, onBack, onClose }: ChatProps) {
             key="new-msg"
             className="flex items-center justify-center gap-3 my-4"
           >
-            <div className="flex-1 h-px bg-red-400" />
-            <span className="text-sm text-red-500 font-medium">
-              New Message
-            </span>
-            <div className="flex-1 h-px bg-red-400" />
+            <div className="flex-1 h-px bg-[#EB5757]" />
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-[#EB5757] font-bold">
+                New Message
+              </span>
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M1.5 4.5L6 9L10.5 4.5" stroke="#EB5757" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </div>
+            <div className="flex-1 h-px bg-[#EB5757]" />
           </div>,
         );
       }
@@ -295,7 +310,7 @@ export function Chat({ thread, hasNewMessages, onBack, onClose }: ChatProps) {
                     e.stopPropagation();
                     setActiveMenuId(activeMenuId === msg.id ? null : msg.id);
                   }}
-                  className="mt-1 p-1 hover:bg-gray-100 rounded-full transition-colors"
+                  className="mt-1 p-1 hover:bg-gray-100 rounded-full transition-colors cursor-pointer"
                 >
                   <MoreHorizontal className="w-4 h-4 text-gray-400" />
                 </button>
@@ -375,7 +390,7 @@ export function Chat({ thread, hasNewMessages, onBack, onClose }: ChatProps) {
                     e.stopPropagation();
                     setActiveMenuId(activeMenuId === msg.id ? null : msg.id);
                   }}
-                  className="mt-1 p-1 hover:bg-gray-100 rounded-full transition-colors"
+                  className="mt-1 p-1 hover:bg-gray-100 rounded-full transition-colors cursor-pointer"
                 >
                   <MoreHorizontal className="w-4 h-4 text-gray-400" />
                 </button>
@@ -428,38 +443,51 @@ export function Chat({ thread, hasNewMessages, onBack, onClose }: ChatProps) {
         <div className="flex items-center gap-3">
           <button
             onClick={onBack}
-            className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+            className="p-1 hover:bg-gray-100 rounded-full transition-colors cursor-pointer"
           >
             <ArrowLeft className="w-5 h-5 text-gray-600" />
           </button>
           <div>
-            <h3 className="font-semibold text-sm text-gray-800">
+            <h3 className="font-semibold text-sm text-[#2F80ED]">
               {thread.title}
             </h3>
-            <p className="text-xs text-gray-500">
-              {thread.participants} Participants
-            </p>
+            {thread.title !== "Fast Visa Support" && (
+              <p className="text-xs text-gray-500">
+                {thread.participants} Participants
+              </p>
+            )}
           </div>
         </div>
         <button
           onClick={onClose}
-          className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+          className="p-2 hover:bg-gray-100 rounded-full transition-colors cursor-pointer"
         >
           <X className="w-4 h-4 text-gray-500" />
         </button>
       </div>
 
-      {/* Messages Area */}
+      {/* Messages */}
       <div
-        ref={containerRef}
+        className="flex-1 overflow-y-auto p-4 scroll-smooth"
         onScroll={handleScroll}
-        className="flex-1 overflow-y-auto p-4 space-y-2"
       >
         {renderMessages()}
         <div ref={messagesEndRef} />
       </div>
 
-      {/* New Message Button (when scrolled up) */}
+      {/* Connecting Status */}
+      {isConnecting && (
+        <div className="px-4 py-2">
+          <div className="bg-[#E9F3FF] p-3 rounded-md flex items-center gap-3">
+            <div className="w-5 h-5 border-2 border-[#2F80ED] border-t-transparent rounded-full animate-spin" />
+            <span className="text-sm text-[#4F4F4F] font-medium">
+              Please wait while we connect you with one of our team ...
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Input Area */}
       {showNewMessage && (
         <motion.button
           initial={{ opacity: 0, y: 10 }}
@@ -479,7 +507,7 @@ export function Chat({ thread, hasNewMessages, onBack, onClose }: ChatProps) {
             <span className="text-blue-600">Editing message...</span>
             <button
               onClick={cancelEdit}
-              className="text-gray-400 hover:text-gray-600"
+              className="text-gray-400 hover:text-gray-600 cursor-pointer"
             >
               <X className="w-4 h-4" />
             </button>
@@ -493,7 +521,7 @@ export function Chat({ thread, hasNewMessages, onBack, onClose }: ChatProps) {
               </span>
               <button
                 onClick={cancelReply}
-                className="text-gray-500 hover:text-gray-700"
+                className="text-gray-500 hover:text-gray-700 cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -515,7 +543,7 @@ export function Chat({ thread, hasNewMessages, onBack, onClose }: ChatProps) {
           <button
             onClick={handleSend}
             disabled={!newMessage.trim()}
-            className="px-4 py-2 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white text-sm font-medium rounded-lg transition-colors shrink-0"
+            className="px-4 py-2 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white text-sm font-medium rounded-lg transition-colors shrink-0 cursor-pointer"
           >
             {editingMessage ? "Save" : "Send"}
           </button>
@@ -523,48 +551,13 @@ export function Chat({ thread, hasNewMessages, onBack, onClose }: ChatProps) {
       </div>
 
       {/* Delete Confirmation Modal */}
-      <AnimatePresence>
-        {deleteConfirmId && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="absolute inset-0 bg-black/50 flex items-center justify-center z-50"
-            onClick={() => setDeleteConfirmId(null)}
-          >
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white rounded-lg p-6 w-80 shadow-xl"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <h3 className="font-semibold text-gray-800 mb-2">
-                Delete Message
-              </h3>
-              <p className="text-sm text-gray-600 mb-4">
-                Are you sure you want to delete this message?
-              </p>
-              <div className="flex justify-end gap-2">
-                <button
-                  onClick={() => setDeleteConfirmId(null)}
-                  className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() =>
-                    deleteConfirmId && handleDeleteConfirm(deleteConfirmId)
-                  }
-                  className="px-4 py-2 text-sm bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors  cursor-pointer"
-                >
-                  Delete
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <DeleteConfirmationModal
+        isOpen={!!deleteConfirmId}
+        title="Delete Message"
+        message="Are you sure you want to delete this message?"
+        onCancel={() => setDeleteConfirmId(null)}
+        onConfirm={() => deleteConfirmId && handleDeleteConfirm(deleteConfirmId)}
+      />
     </>
   );
 }
