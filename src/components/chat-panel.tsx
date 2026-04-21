@@ -78,7 +78,7 @@ export function ChatPanel({
       </div>
 
       {/* Items List */}
-      <div className="max-h-[500px] overflow-y-auto">
+      <div className="flex-1 overflow-y-auto">
         {loading && (
           <LoadingIndicator message="Loading Chats ..." />
         )}

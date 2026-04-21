@@ -24,7 +24,7 @@ export function PanelContainer({
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 20, scale: 0.95 }}
           transition={{ duration: 0.3, ease: "easeOut" }}
-          className="absolute bottom-20 right-0 w-[634px] h-[600px] bg-white rounded-sm shadow-2xl overflow-hidden z-30 flex flex-col align-items-bottom"
+          className="absolute bottom-20 right-0 w-[calc(100vw-2rem)] sm:w-[634px] h-[450px] sm:h-[520px] max-h-[calc(100vh-120px)] bg-white rounded-sm shadow-2xl overflow-hidden z-30 flex flex-col"
         >
           {children}
         </motion.div>
